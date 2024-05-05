@@ -1,3 +1,13 @@
+/**
+ * Sam Siewert, December 2017
+ * Modified by Krishna Suhagiya and Unmesh Phaterpekar
+ *
+ * @file    main.cpp
+ * @brief   This file contains the main function and scheduler.
+ * @date    30th April 2024
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
