@@ -63,7 +63,7 @@ void intHandler(int arg)
 void *sequencer(void *threadp)
 {
     struct timeval current_time_val;
-    struct timespec delay_time = {0,33333333}; // delay for 33.33 msec, 30 Hz
+    struct timespec delay_time = {0,8333333}; // delay for 8.33 msec, 120 Hz
     struct timespec remaining_time;
     double current_time;
     double residual;
@@ -112,13 +112,13 @@ void *sequencer(void *threadp)
         // Release each service at a sub-rate of the generic sequencer rate
 
         //Servcie_1 = RT_MAX-1	@ 15 Hz
-        if((seqCnt % 2) == 0) sem_post(&sem_camera);
+        if((seqCnt % 8) == 0) sem_post(&sem_camera);
 
-        // Service_2 = RT_MAX-2	@ 10 Hz
-        if((seqCnt % 3) == 0) sem_post(&sem_motor);
+        // Service_2 = RT_MAX-2	@ 8 Hz
+        if((seqCnt % 15) == 0) sem_post(&sem_motor);
 
-         //Service_3 = RT_MAX-3	@ 2 Hz
-        if((seqCnt % 15) == 0) sem_post(&sem_ultrasonic);
+         //Service_3 = RT_MAX-3	@ 6 Hz
+        if((seqCnt % 20) == 0) sem_post(&sem_ultrasonic);
 
         //gettimeofday(&current_time_val, (struct timezone *)0);
         //syslog(LOG_CRIT, "Sequencer release all sub-services @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);

@@ -101,6 +101,9 @@ void *motor_service(void *threadp)
 		}
 			
 	}
+	
+        
+    delay(500);
 
     controlMotor(1, 0, 0);    // Stop Motor A
 
