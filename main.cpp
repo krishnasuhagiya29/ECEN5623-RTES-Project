@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -9,6 +7,7 @@
 #include <sched.h>
 #include <time.h>
 #include <semaphore.h>
+#include <signal.h>
 
 #include <syslog.h>
 #include <sys/time.h>
@@ -22,13 +21,10 @@
 #define USEC_PER_MSEC (1000)
 #define NANOSEC_PER_SEC (1000000000)
 #define NUM_CPU_CORES (1)
-#define TRUE (1)
-#define FALSE (0)
 
 #define NUM_THREADS (3+1)
 
-int abortTest=FALSE;
-int abortS1=FALSE, abortS2=FALSE, abortS3=FALSE;
+bool abortS=FALSE, abortS1=FALSE, abortS2=FALSE, abortS3=FALSE;
 struct timeval start_time_val;
 
 typedef struct
@@ -57,6 +53,11 @@ void print_scheduler(void)
        default:
            printf("Pthread Policy is UNKNOWN\n"); exit(-1);
    }
+}
+
+void intHandler(int arg)
+{
+    abortS=TRUE; abortS1=TRUE; abortS2=TRUE; abortS3=TRUE;
 }
 
 void *sequencer(void *threadp)
@@ -122,7 +123,7 @@ void *sequencer(void *threadp)
         //gettimeofday(&current_time_val, (struct timezone *)0);
         //syslog(LOG_CRIT, "Sequencer release all sub-services @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
 
-    } while(1);
+    } while(!abortS);
 
     sem_post(&sem_camera); sem_post(&sem_motor); sem_post(&sem_ultrasonic);
     abortS1=TRUE; abortS2=TRUE; abortS3=TRUE;
@@ -154,6 +155,11 @@ int main( int argc, char *argv[] )
     
     setupGpio();
     ultasonic_sensor_setup();
+    
+    /* Stop program with Ctrl+C */
+    struct sigaction act;
+    act.sa_handler = intHandler;
+    sigaction(SIGINT, &act, NULL);
 
 //   printf("System has %d processors configured and %d available.\n", get_nprocs_conf(), get_nprocs());
 
@@ -273,6 +279,8 @@ int main( int argc, char *argv[] )
         perror("pthread_create for scheduler service 0");
     else
         printf("pthread_create successful for scheduler service 0\n");
+        
+   printf("Joining threads \r\n");
 
 
    for(i=0;i<NUM_THREADS;i++)

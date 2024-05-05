@@ -4,6 +4,7 @@
 #include <wiringPi.h>
 #include <sys/time.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 #include "motor.h"
 
@@ -14,6 +15,7 @@
 sem_t sem_ultrasonic;
 extern bool is_forward;
 extern bool is_reverse;
+extern bool abortS3;
 
 void ultasonic_sensor_setup() {
     wiringPiSetup();
@@ -28,7 +30,7 @@ void ultasonic_sensor_setup() {
 void *ultrasonic_sensor_service(void *threadp) {
     printf("Distance Measurement In Progress\n");
 
-    while (1) {
+    while (!abortS3) {
 		sem_wait(&sem_ultrasonic);
 		//printf("is_r2: %d\r\n", is_forward);
 		if(is_forward == true)
@@ -63,6 +65,8 @@ void *ultrasonic_sensor_service(void *threadp) {
 			}
 		}
     }
+    
+    printf("Sensor stopped\n");
 
-    return 0;
+    pthread_exit(NULL);
 }

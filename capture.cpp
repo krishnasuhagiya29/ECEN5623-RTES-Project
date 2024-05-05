@@ -29,6 +29,7 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include <semaphore.h>
+#include <pthread.h>
 
 #include "capture.h"
 #include "motor.h"
@@ -38,6 +39,7 @@ using namespace std;
 
 extern bool is_forward;
 extern bool is_reverse;
+extern bool abortS1;
 
 // See www.asciitable.com
 #define ESCAPE_KEY (27)
@@ -64,7 +66,7 @@ void *camera_service(void *threadp)
     Mat frame;
     Mat blackframe = Mat::zeros(Size(640, 480), CV_8UC3);
 
-    while (true)
+    while (!abortS1)
     {
         sem_wait(&sem_camera);
 
@@ -90,5 +92,7 @@ void *camera_service(void *threadp)
     }
 
     destroyWindow("video_display");
+    printf("Camera stopped\n");
+    pthread_exit(NULL);
 }
 

@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <wiringPi.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 #include "motor.h"
 
 sem_t sem_motor;
 bool is_forward = true;
 bool is_reverse = false;
+extern bool abortS2;
 
 // GPIO pin definitions
 #define MOTOR_PWM_A 1  // PWM for Motor A (GPIO 18)
@@ -64,7 +66,7 @@ void *motor_service(void *threadp)
 		is_reverse = true;
 	}*/
 		
-    while(1)
+    while(!abortS2)
     {
         sem_wait(&sem_motor);
         button_state = digitalRead(BUTTON_PIN);  // Read button state
@@ -99,13 +101,12 @@ void *motor_service(void *threadp)
 		}
 			
 	}
-    //delay(2000);               // Run for 2 seconds
 
-    //controlMotor(1, 0, 0);    // Stop Motor A
+    controlMotor(1, 0, 0);    // Stop Motor A
 
-    //controlMotor(2, 0, 0);    // Stop Motor B
+    controlMotor(2, 0, 0);    // Stop Motor B
 
-    printf("Motor test ends\n");
-
-    return 0;
+    printf("Motor stopped\n");
+    
+    pthread_exit(NULL);
 }

@@ -1,4 +1,4 @@
-INCLUDE_DIRS = -I/usr/include/opencv4 -I/home/shruti/Desktop/pi-parking/
+INCLUDE_DIRS = -I/usr/include/opencv4
 LIB_DIRS = 
 CC=g++
 
