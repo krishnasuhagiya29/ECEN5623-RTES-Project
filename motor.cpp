@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <syslog.h>
 #include <wiringPi.h>
 #include <semaphore.h>
 #include <pthread.h>
 
 #include "motor.h"
+#include "time.h"
 
 sem_t sem_motor;
 bool is_forward = true;
@@ -50,57 +52,50 @@ void controlMotor(int motor, int speed, int direction) {
 
 void *motor_service(void *threadp)
 {
-	int button_state = 0;
-	int* ptr_arg = (int*)threadp;
+    struct timespec start = {0,0};
+    struct timespec stop = {0,0};
+    static struct timespec wcet = {0,0};
+    struct timespec time_taken = {0,0};
+    int button_state = 0;
     printf("Motor test starts\n");
-    printf("threadp: %d\r\n", *ptr_arg);
-    
-	/*if(*ptr_arg == 0)
-	{
-		is_forward = true;
-		is_reverse = false;
-	}
-	else if (*ptr_arg == 1) 
-	{
-		is_forward = false;
-		is_reverse = true;
-	}*/
 		
     while(!abortS2)
     {
         sem_wait(&sem_motor);
+	clock_gettime(CLOCK_REALTIME, &start);
         button_state = digitalRead(BUTTON_PIN);  // Read button state
-        printf("b_s: %d\r\n", button_state);
         if (button_state == 1) {  // Button is pressed
-			is_forward = !is_forward;  // Toggle forward state
-			is_reverse = !is_reverse;  // Toggle reverse state
-		}
-		if(is_forward | is_reverse)
-		{
-			if(is_forward)
-			{
-				printf("here\r\n");
-				// Test Motor A
-				controlMotor(1, 512, 1);  // Half speed forward
-				// Test Motor B
-				controlMotor(2, 512, 1);  // Half speed forward
-			}
-			else if(is_reverse)
-			{
-				printf("here1\r\n");
-				controlMotor(1, 512, 0);  // Half speed backward
-				controlMotor(2, 512, 0);  // Half speed backward
-			}
-		}
-		
-		if(is_obstacle_detected)
-		{
-			printf("here2\r\n");
-			controlMotor(1, 0, 0);    // Stop Motor A
-			controlMotor(2, 0, 0);    // Stop Motor B
-		}
-			
+		is_forward = !is_forward;  // Toggle forward state
+		is_reverse = !is_reverse;  // Toggle reverse state
 	}
+	if(is_forward | is_reverse)
+	{
+		if(is_forward)
+		{
+			// Test Motor A
+			controlMotor(1, 256, 1);  // Half speed forward
+			// Test Motor B
+			controlMotor(2, 256, 1);  // Half speed forward
+		}
+		else if(is_reverse)
+		{
+			controlMotor(1, 256, 0);  // Half speed backward
+			controlMotor(2, 256, 0);  // Half speed backward
+		}
+	}
+	
+	if(is_obstacle_detected)
+	{
+		controlMotor(1, 0, 0);    // Stop Motor A
+		controlMotor(2, 0, 0);    // Stop Motor B
+	}
+	clock_gettime( CLOCK_REALTIME, &stop);
+	delta_t(&stop, &start, &time_taken);
+	if(check_wcet(&time_taken, &wcet))
+	{
+	    syslog(LOG_INFO, "motor wcet: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
+	}
+    }
 	
         
     delay(500);
@@ -109,7 +104,7 @@ void *motor_service(void *threadp)
 
     controlMotor(2, 0, 0);    // Stop Motor B
 
-    printf("Motor stopped\n");
+    syslog(LOG_INFO, "Motor stopped\n");
     
     pthread_exit(NULL);
 }

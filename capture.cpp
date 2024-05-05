@@ -1,6 +1,7 @@
 /*
  *
- *  Example by Sam Siewert 
+ *  Example by Sam Siewert
+ *  Modified by Krishna Suhagiya and Unmesh Phaterpekar
  *
  *  Created for OpenCV 4.x for Jetson Nano 2g, based upon
  *  https://docs.opencv.org/4.1.1
@@ -28,11 +29,13 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <syslog.h>
 #include <semaphore.h>
 #include <pthread.h>
 
 #include "capture.h"
 #include "motor.h"
+#include "time.h"
 
 using namespace cv;
 using namespace std;
@@ -49,8 +52,11 @@ sem_t sem_camera;
 
 void *camera_service(void *threadp)
 {
+    struct timespec start = {0,0};
+    struct timespec stop = {0,0};
+    static struct timespec wcet = {0,0};
+    struct timespec time_taken = {0,0};
     printf("Camera test starts\n");
-    printf("is_r: %d\r\n", is_reverse);
     VideoCapture cam0(0);
     namedWindow("video_display");
     char winInput;
@@ -69,26 +75,23 @@ void *camera_service(void *threadp)
     while (!abortS1)
     {
         sem_wait(&sem_camera);
-
         if (is_reverse)
         {
+            clock_gettime(CLOCK_REALTIME, &start);
             cam0.read(frame);
             imshow("video_display", frame);
+            clock_gettime( CLOCK_REALTIME, &stop);
+            delta_t(&stop, &start, &time_taken);
+            if(check_wcet(&time_taken, &wcet))
+            {
+                syslog(LOG_INFO, "camera wcet: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
+            }
         }
         else
         {
             imshow("video_display", blackframe);
         }
 
-        winInput = waitKey(10);
-        if (winInput == ESCAPE_KEY)
-        {
-            break;
-        }
-        else if (winInput == 'n')
-        {
-            cout << "input " << winInput << " ignored" << endl;
-        }
     }
 
     destroyWindow("video_display");

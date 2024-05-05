@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <unistd.h>
 
 #include <pthread.h>
 #include <sched.h>
@@ -57,7 +56,8 @@ void print_scheduler(void)
 
 void intHandler(int arg)
 {
-    abortS=TRUE; abortS1=TRUE; abortS2=TRUE; abortS3=TRUE;
+    // Abort the sequencer itself
+    abortS=TRUE;
 }
 
 void *sequencer(void *threadp)
@@ -72,8 +72,7 @@ void *sequencer(void *threadp)
     threadParams_t *threadParams = (threadParams_t *)threadp;
 
     gettimeofday(&current_time_val, (struct timezone *)0);
-    syslog(LOG_CRIT, "Sequencer thread @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
-    printf("Sequencer thread @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
+    //syslog(LOG_CRIT, "Sequencer thread @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
 
     do
     {
@@ -103,7 +102,7 @@ void *sequencer(void *threadp)
 
         seqCnt++;
         gettimeofday(&current_time_val, (struct timezone *)0);
-        syslog(LOG_INFO, "Sequencer cycle %llu @ sec=%d, msec=%d\n", seqCnt, (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
+        //syslog(LOG_INFO, "Sequencer cycle %llu @ sec=%d, msec=%d\n", seqCnt, (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
 
 
         if(delay_cnt > 1) printf("Sequencer looping delay %d\n", delay_cnt);
@@ -119,9 +118,6 @@ void *sequencer(void *threadp)
 
          //Service_3 = RT_MAX-3	@ 6 Hz
         if((seqCnt % 20) == 0) sem_post(&sem_ultrasonic);
-
-        //gettimeofday(&current_time_val, (struct timezone *)0);
-        //syslog(LOG_CRIT, "Sequencer release all sub-services @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
 
     } while(!abortS);
 
@@ -155,13 +151,13 @@ int main( int argc, char *argv[] )
     
     setupGpio();
     ultasonic_sensor_setup();
+    openlog("pi-parking", 0, LOG_USER);
+    syslog(LOG_INFO, "starting");
     
     /* Stop program with Ctrl+C */
     struct sigaction act;
     act.sa_handler = intHandler;
     sigaction(SIGINT, &act, NULL);
-
-//   printf("System has %d processors configured and %d available.\n", get_nprocs_conf(), get_nprocs());
 
    CPU_ZERO(&allcpuset);
 
@@ -254,10 +250,6 @@ int main( int argc, char *argv[] )
         perror("pthread_create for sensor failed\r\n");
     else
         printf("pthread_create successful for sensor\r\n");
-       
-    gettimeofday(&start_time_val, (struct timezone *)0);
-    gettimeofday(&current_time_val, (struct timezone *)0);
-    syslog(LOG_CRIT, "sequencer @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
 
     // Wait for service threads to initialize and await release by sequencer.
     //
