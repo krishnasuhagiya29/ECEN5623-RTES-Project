@@ -55,7 +55,7 @@ void print_scheduler(void)
 void intHandler(int arg)
 {
     // Abort the sequencer itself
-    abortS=TRUE;
+    abortS=TRUE; abortS1=TRUE; abortS2=TRUE; abortS3=TRUE;
 }
 
 void *sequencer(void *threadp)
@@ -190,7 +190,7 @@ int main( int argc, char *argv[] )
     {
 
       CPU_ZERO(&threadcpu);
-      CPU_SET(3, &threadcpu);
+      CPU_SET(0, &threadcpu);
 
       rc=pthread_attr_init(&rt_sched_attr[i]);
       rc=pthread_attr_setinheritsched(&rt_sched_attr[i], PTHREAD_EXPLICIT_SCHED);

@@ -89,6 +89,8 @@ void *camera_service(void *threadp)
         {
             imshow("video_display", blackframe);
         }
+        
+        winInput = waitKey(10);
 
     }
 

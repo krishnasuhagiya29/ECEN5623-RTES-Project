@@ -10,6 +10,7 @@
 // Define GPIO pins for Trigger and Echo pins
 #define TRIG 15
 #define ECHO 16
+#define DISTANCE_THRESHOLD 7
 
 sem_t sem_ultrasonic;
 extern bool is_forward;
@@ -57,7 +58,7 @@ void *ultrasonic_sensor_service(void *threadp) {
 			// Calculate the distance
 			travel_time = (detection_end.tv_sec - detection_start.tv_sec) * 1000000L + detection_end.tv_usec - detection_start.tv_usec;
 			distance = travel_time / 58;
-			if(distance < 10)
+			if(distance < DISTANCE_THRESHOLD)
 			{
 				syslog(LOG_INFO, "Distance: %d cm\n", distance);
 				is_obstacle_detected = true;
