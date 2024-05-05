@@ -35,7 +35,7 @@
 
 #include "capture.h"
 #include "motor.h"
-#include "time.h"
+#include "time_stamp.h"
 
 using namespace cv;
 using namespace std;
@@ -44,8 +44,6 @@ extern bool is_forward;
 extern bool is_reverse;
 extern bool abortS1;
 
-// See www.asciitable.com
-#define ESCAPE_KEY (27)
 #define SYSTEM_ERROR (-1)
 
 sem_t sem_camera;
@@ -56,7 +54,7 @@ void *camera_service(void *threadp)
     struct timespec stop = {0,0};
     static struct timespec wcet = {0,0};
     struct timespec time_taken = {0,0};
-    printf("Camera test starts\n");
+    printf("Camera service started\r\n");
     VideoCapture cam0(0);
     namedWindow("video_display");
     char winInput;
@@ -95,7 +93,7 @@ void *camera_service(void *threadp)
     }
 
     destroyWindow("video_display");
-    printf("Camera stopped\n");
+    printf("Camera service stopped\n");
     pthread_exit(NULL);
 }
 

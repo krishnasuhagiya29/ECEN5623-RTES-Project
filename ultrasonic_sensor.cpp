@@ -1,13 +1,11 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <syslog.h>
 #include <wiringPi.h>
-#include <sys/time.h>
 #include <semaphore.h>
 #include <pthread.h>
 
 #include "motor.h"
-#include "time.h"
+#include "time_stamp.h"
 
 // Define GPIO pins for Trigger and Echo pins
 #define TRIG 15
@@ -18,7 +16,7 @@ extern bool is_forward;
 extern bool is_reverse;
 extern bool abortS3;
 
-void ultasonic_sensor_setup() {
+void setup_ultasonic_sensor() {
     wiringPiSetup();
     pinMode(TRIG, OUTPUT);
     pinMode(ECHO, INPUT);
@@ -59,9 +57,9 @@ void *ultrasonic_sensor_service(void *threadp) {
 			// Calculate the distance
 			travel_time = (detection_end.tv_sec - detection_start.tv_sec) * 1000000L + detection_end.tv_usec - detection_start.tv_usec;
 			distance = travel_time / 58;
-			syslog(LOG_INFO, "Distance: %d cm\n", distance);
 			if(distance < 10)
 			{
+				syslog(LOG_INFO, "Distance: %d cm\n", distance);
 				is_obstacle_detected = true;
 			}
 			else

@@ -4,12 +4,10 @@
 
 #include <pthread.h>
 #include <sched.h>
-#include <time.h>
 #include <semaphore.h>
 #include <signal.h>
 
 #include <syslog.h>
-#include <sys/time.h>
 
 #include <errno.h>
 
@@ -72,14 +70,11 @@ void *sequencer(void *threadp)
     threadParams_t *threadParams = (threadParams_t *)threadp;
 
     gettimeofday(&current_time_val, (struct timezone *)0);
-    //syslog(LOG_CRIT, "Sequencer thread @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
 
     do
     {
         delay_cnt=0; residual=0.0;
 
-        //gettimeofday(&current_time_val, (struct timezone *)0);
-        //syslog(LOG_CRIT, "Sequencer thread prior to delay @ sec=%d, msec=%d\n", (int)(current_time_val.tv_sec-start_time_val.tv_sec), (int)current_time_val.tv_usec/USEC_PER_MSEC);
         do
         {
             rc=nanosleep(&delay_time, &remaining_time);
@@ -107,16 +102,15 @@ void *sequencer(void *threadp)
 
         if(delay_cnt > 1) printf("Sequencer looping delay %d\n", delay_cnt);
 
-
         // Release each service at a sub-rate of the generic sequencer rate
 
-        //Servcie_1 = RT_MAX-1	@ 15 Hz
+        // Camera service = RT_MAX-1	@ 15 Hz
         if((seqCnt % 8) == 0) sem_post(&sem_camera);
 
-        // Service_2 = RT_MAX-2	@ 8 Hz
+        // Motor service = RT_MAX-2	@ 8 Hz
         if((seqCnt % 15) == 0) sem_post(&sem_motor);
 
-         //Service_3 = RT_MAX-3	@ 6 Hz
+        // Ultrasonic service = RT_MAX-3	@ 6 Hz
         if((seqCnt % 20) == 0) sem_post(&sem_ultrasonic);
 
     } while(!abortS);
@@ -127,7 +121,6 @@ void *sequencer(void *threadp)
     pthread_exit((void *)0);
 }
 
-struct timeval current_time_val;
 int i, rc, scope;
 cpu_set_t threadcpu;
 pthread_t threads[NUM_THREADS];
@@ -138,7 +131,6 @@ struct sched_param rt_param[NUM_THREADS];
 struct sched_param main_param;
 pthread_attr_t main_attr;
 pid_t mainpid;
-uint8_t gpio = 0;
 bool is_obstacle_detected;
 
 int main( int argc, char *argv[] ) 
@@ -146,11 +138,9 @@ int main( int argc, char *argv[] )
     cpu_set_t allcpuset;
 
     printf("Welcome to Pi Parking System\r\n");
-    //printf("GPIO: %d\r\n", atoi(argv[1]));
-    //gpio = atoi(argv[1]);
     
-    setupGpio();
-    ultasonic_sensor_setup();
+    setup_gpio();
+    setup_ultasonic_sensor();
     openlog("pi-parking", 0, LOG_USER);
     syslog(LOG_INFO, "starting");
     
@@ -159,19 +149,19 @@ int main( int argc, char *argv[] )
     act.sa_handler = intHandler;
     sigaction(SIGINT, &act, NULL);
 
-   CPU_ZERO(&allcpuset);
+    CPU_ZERO(&allcpuset);
 
-   for(i=0; i < NUM_CPU_CORES; i++)
-       CPU_SET(i, &allcpuset);
+    for(i=0; i < NUM_CPU_CORES; i++)
+        CPU_SET(i, &allcpuset);
 
-   printf("Using CPUS=%d from total available.\n", CPU_COUNT(&allcpuset));
+    printf("Using CPUS=%d from total available.\r\n", CPU_COUNT(&allcpuset));
 
 
     // initialize the sequencer semaphores
     //
-    if (sem_init (&sem_camera, 0, 0)) { printf ("Failed to initialize S1 semaphore\n"); exit (-1); }
-    if (sem_init (&sem_motor, 0, 0)) { printf ("Failed to initialize S2 semaphore\n"); exit (-1); }
-    if (sem_init (&sem_ultrasonic, 0, 0)) { printf ("Failed to initialize S3 semaphore\n"); exit (-1); }
+    if (sem_init (&sem_camera, 0, 0)) { printf ("Failed to initialize sem_camera\r\n"); exit (-1); }
+    if (sem_init (&sem_motor, 0, 0)) { printf ("Failed to initialize sem_motor\r\n"); exit (-1); }
+    if (sem_init (&sem_ultrasonic, 0, 0)) { printf ("Failed to initialize sem_ultrasonic\r\n"); exit (-1); }
 
     mainpid=getpid();
 
@@ -184,18 +174,17 @@ int main( int argc, char *argv[] )
     if(rc < 0) perror("main_param");
     print_scheduler();
 
-
     pthread_attr_getscope(&main_attr, &scope);
 
     if(scope == PTHREAD_SCOPE_SYSTEM)
-      printf("PTHREAD SCOPE SYSTEM\n");
+      printf("PTHREAD SCOPE SYSTEM\r\n");
     else if (scope == PTHREAD_SCOPE_PROCESS)
-      printf("PTHREAD SCOPE PROCESS\n");
+      printf("PTHREAD SCOPE PROCESS\r\n");
     else
-      printf("PTHREAD SCOPE UNKNOWN\n");
+      printf("PTHREAD SCOPE UNKNOWN\r\n");
 
-    printf("rt_max_prio=%d\n", rt_max_prio);
-    printf("rt_min_prio=%d\n", rt_min_prio);
+    printf("rt_max_prio=%d\r\n", rt_max_prio);
+    printf("rt_min_prio=%d\r\n", rt_min_prio);
 
     for(i=0; i < NUM_THREADS; i++)
     {
@@ -206,7 +195,7 @@ int main( int argc, char *argv[] )
       rc=pthread_attr_init(&rt_sched_attr[i]);
       rc=pthread_attr_setinheritsched(&rt_sched_attr[i], PTHREAD_EXPLICIT_SCHED);
       rc=pthread_attr_setschedpolicy(&rt_sched_attr[i], SCHED_FIFO);
-      //rc=pthread_attr_setaffinity_np(&rt_sched_attr[i], sizeof(cpu_set_t), &threadcpu);
+      rc=pthread_attr_setaffinity_np(&rt_sched_attr[i], sizeof(cpu_set_t), &threadcpu);
 
       rt_param[i].sched_priority=rt_max_prio-i;
       pthread_attr_setschedparam(&rt_sched_attr[i], &rt_param[i]);
@@ -216,7 +205,7 @@ int main( int argc, char *argv[] )
    
     printf("Service threads will run on %d CPU cores\r\n", CPU_COUNT(&threadcpu));
 
-    // Servcie_1 = RT_MAX-1	@ 3 Hz
+    // camera_service = RT_MAX-1 @ 15 Hz
     //
     rt_param[1].sched_priority=rt_max_prio-1;
     pthread_attr_setschedparam(&rt_sched_attr[1], &rt_param[1]);
@@ -231,7 +220,7 @@ int main( int argc, char *argv[] )
     else
         printf("pthread_create successful for camera\r\n");
 
-    // Service_2 = RT_MAX-2	@ 1 Hz
+    // motor_service = RT_MAX-2	@ 8 Hz
     //
     rt_param[2].sched_priority=rt_max_prio-2;
     pthread_attr_setschedparam(&rt_sched_attr[2], &rt_param[2]);
@@ -241,7 +230,7 @@ int main( int argc, char *argv[] )
     else
         printf("pthread_create successful for motor\r\n");
 
-    // Service_3 = RT_MAX-3	@ 0.5 Hz
+    // ultrasonic_sensor_service = RT_MAX-3	@ 6 Hz
     //
     rt_param[3].sched_priority=rt_max_prio-3;
     pthread_attr_setschedparam(&rt_sched_attr[3], &rt_param[3]);
@@ -252,17 +241,12 @@ int main( int argc, char *argv[] )
         printf("pthread_create successful for sensor\r\n");
 
     // Wait for service threads to initialize and await release by sequencer.
-    //
-    // Note that the sleep is not necessary of RT service threads are created wtih 
-    // correct POSIX SCHED_FIFO priorities compared to non-RT priority of this main
-    // program.
-    //
     usleep(1000000);
  
-    // Create Sequencer thread, which like a cyclic executive, is highest prio
+    // Create Sequencer thread
     printf("Start sequencer\n");
 
-    // Sequencer = RT_MAX	@ 30 Hz
+    // Sequencer = RT_MAX	@ 120 Hz
     //
     rt_param[0].sched_priority=rt_max_prio;
     pthread_attr_setschedparam(&rt_sched_attr[0], &rt_param[0]);
@@ -278,6 +262,6 @@ int main( int argc, char *argv[] )
    for(i=0;i<NUM_THREADS;i++)
        pthread_join(threads[i], NULL);
 
-   printf("\nTEST COMPLETE\n");
+   printf("TEST COMPLETE\n");
    return 0;
 }

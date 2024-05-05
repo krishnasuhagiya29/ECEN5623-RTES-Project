@@ -5,7 +5,7 @@
 #include <pthread.h>
 
 #include "motor.h"
-#include "time.h"
+#include "time_stamp.h"
 
 sem_t sem_motor;
 bool is_forward = true;
@@ -23,7 +23,7 @@ extern bool abortS2;
 #define BUTTON_PIN 7   // Button pin (GPIO 4, WiringPi pin 7)
 
 // Initialize GPIO pins
-void setupGpio() {
+void setup_gpio() {
     wiringPiSetup();
     pinMode(BUTTON_PIN, INPUT);  // Set button pin as input
     pullUpDnControl(BUTTON_PIN, PUD_UP);  // Enable pull-up resistor
@@ -38,7 +38,7 @@ void setupGpio() {
 }
 
 // Control motor speed and direction
-void controlMotor(int motor, int speed, int direction) {
+void control_motor(int motor, int speed, int direction) {
     if (motor == 1) {  // Motor A
         pwmWrite(MOTOR_PWM_A, speed);
         digitalWrite(MOTOR_IN1_A, direction ? HIGH : LOW);
@@ -57,7 +57,7 @@ void *motor_service(void *threadp)
     static struct timespec wcet = {0,0};
     struct timespec time_taken = {0,0};
     int button_state = 0;
-    printf("Motor test starts\n");
+    printf("Motor started\r\n");
 		
     while(!abortS2)
     {
@@ -73,21 +73,21 @@ void *motor_service(void *threadp)
 		if(is_forward)
 		{
 			// Test Motor A
-			controlMotor(1, 256, 1);  // Half speed forward
+			control_motor(1, 512, 1);  // Half speed forward
 			// Test Motor B
-			controlMotor(2, 256, 1);  // Half speed forward
+			control_motor(2, 512, 1);  // Half speed forward
 		}
 		else if(is_reverse)
 		{
-			controlMotor(1, 256, 0);  // Half speed backward
-			controlMotor(2, 256, 0);  // Half speed backward
+			control_motor(1, 512, 0);  // Half speed backward
+			control_motor(2, 512, 0);  // Half speed backward
 		}
 	}
 	
 	if(is_obstacle_detected)
 	{
-		controlMotor(1, 0, 0);    // Stop Motor A
-		controlMotor(2, 0, 0);    // Stop Motor B
+		control_motor(1, 0, 0);    // Stop Motor A
+		control_motor(2, 0, 0);    // Stop Motor B
 	}
 	clock_gettime( CLOCK_REALTIME, &stop);
 	delta_t(&stop, &start, &time_taken);
@@ -100,11 +100,11 @@ void *motor_service(void *threadp)
         
     delay(500);
 
-    controlMotor(1, 0, 0);    // Stop Motor A
+    control_motor(1, 0, 0);    // Stop Motor A
 
-    controlMotor(2, 0, 0);    // Stop Motor B
+    control_motor(2, 0, 0);    // Stop Motor B
 
-    syslog(LOG_INFO, "Motor stopped\n");
+    syslog(LOG_INFO, "Motor stopped\r\n");
     
     pthread_exit(NULL);
 }

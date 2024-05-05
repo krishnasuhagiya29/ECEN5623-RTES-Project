@@ -1,4 +1,4 @@
-#include "time.h"
+#include "time_stamp.h"
 
 int delta_t(struct timespec *stop, struct timespec *start, struct timespec *delta_t)
 {
