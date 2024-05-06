@@ -74,6 +74,7 @@ void *motor_service(void *threadp)
     static struct timespec wcet = {0,0};
     struct timespec time_taken = {0,0};
     int button_state = 0;
+    unsigned long motor_service_count = 0;
     printf("Motor started\r\n");
 		
     while(!abortS2)
@@ -108,10 +109,12 @@ void *motor_service(void *threadp)
 	}
 	clock_gettime( CLOCK_REALTIME, &stop);
 	delta_t(&stop, &start, &time_taken);
+	motor_service_count++;
 	if(check_wcet(&time_taken, &wcet))
 	{
 	    syslog(LOG_INFO, "motor wcet: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
 	}
+	syslog(LOG_CRIT, "motor_service_count = %lu , timestamp: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", motor_service_count, wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
     }
 	
         

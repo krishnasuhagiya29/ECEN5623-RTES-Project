@@ -54,6 +54,7 @@ void *camera_service(void *threadp)
     struct timespec stop = {0,0};
     static struct timespec wcet = {0,0};
     struct timespec time_taken = {0,0};
+    unsigned long camera_service_count = 0;
     printf("Camera service started\r\n");
     VideoCapture cam0(0);
     namedWindow("video_display");
@@ -80,10 +81,12 @@ void *camera_service(void *threadp)
             imshow("video_display", frame);
             clock_gettime( CLOCK_REALTIME, &stop);
             delta_t(&stop, &start, &time_taken);
+            camera_service_count++;
             if(check_wcet(&time_taken, &wcet))
             {
                 syslog(LOG_INFO, "camera wcet: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
             }
+            syslog(LOG_CRIT, "camera_service_count = %lu , timestamp: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", camera_service_count, wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
         }
         else
         {

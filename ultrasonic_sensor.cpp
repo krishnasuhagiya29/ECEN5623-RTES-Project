@@ -49,6 +49,7 @@ void *ultrasonic_sensor_service(void *threadp) {
     struct timespec stop = {0,0};
     static struct timespec wcet = {0,0};
     struct timespec time_taken = {0,0};
+    unsigned long ultrasonic_sensor_service_count = 0;
     printf("Distance Measurement In Progress\n");
 
     while (!abortS3) {
@@ -86,10 +87,12 @@ void *ultrasonic_sensor_service(void *threadp) {
 			}
 		        clock_gettime( CLOCK_REALTIME, &stop);
 		        delta_t(&stop, &start, &time_taken);
+			ultrasonic_sensor_service_count++;
 		        if(check_wcet(&time_taken, &wcet))
 		        {
 			    syslog(LOG_INFO, "sensor wcet: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
 		        }
+			syslog(LOG_CRIT, "ultrasonic_sensor_service_count = %lu , timestamp: %lu sec, %lu msec (%lu microsec), ((%lu nanosec))\n\n", ultrasonic_sensor_service_count, wcet.tv_sec, (wcet.tv_nsec / NSEC_PER_MSEC), (wcet.tv_nsec / NSEC_PER_MICROSEC),wcet.tv_nsec);
 		}
     }
     
